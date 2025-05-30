@@ -8,8 +8,8 @@
                 <tr>
                     <th>ID</th>
                     <th>Tinggi Air</th>
-                    <th>pH</th>
                     <th>Debit</th>
+                    <th>Waktu</th>
                 </tr>
             </thead>
         </table>
@@ -30,8 +30,9 @@
             columns: [
                 { data: 'id', name: 'id' },
                 { data: 'tinggi_air', name: 'tinggi_air' },
-                { data: 'ph', name: 'ph' },
-                { data: 'debit', name: 'debit' }
+                { data: 'debit', name: 'debit' },
+                { data: 'created_at', name: 'created_at' },
+
             ]
         });
     });
