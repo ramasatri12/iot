@@ -104,7 +104,7 @@ class SensorReportController extends Controller
      */
     public function getData()
     {
-                $query = SensorReport::select('id', 'tinggi_air', 'created_at', 'debit');
+        $query = SensorReport::select('id', 'tinggi_air', 'created_at', 'debit');
 
         return DataTables::of($query)
             ->editColumn('created_at', function ($row) {

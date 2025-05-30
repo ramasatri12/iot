@@ -27,7 +27,7 @@ class MqttService
                 echo $error . PHP_EOL;
             }
 
-            return; // jangan lanjut koneksi
+            return; 
         }
 
 
@@ -50,12 +50,11 @@ class MqttService
 
                 $data = json_decode($message, true);
 
-                if (isset($data['tinggi_air'], $data['ph'], $data['debit'])) {
+                if (isset($data['tinggi_air'],$data['debit'])) {
                     $status = $this->determineStatus((float) $data['tinggi_air']);
 
                     $report = SensorReport::create([
                         'tinggi_air' => (float) $data['tinggi_air'],
-                        'ph'         => (float) $data['ph'],
                         'debit'      => (float) $data['debit'],
                         'status'     => $status,
                     ]);
@@ -64,7 +63,7 @@ class MqttService
 
                     if ($status !== 'normal') {
                         app(CallMeBotService::class)->sendMessage(
-                            "⚠️ *Peringatan Sensor*\nTinggi Air: *{$data['tinggi_air']}cm*\nPH: {$data['ph']}\nDebit: {$data['debit']}\nStatus: *{$status}*"
+                            "⚠️ *Peringatan Sensor*\nTinggi Air: *{$data['tinggi_air']}cm*\nDebit: {$data['debit']}\nStatus: *{$status}*"
                         );
                     }
                 }
@@ -85,7 +84,6 @@ class MqttService
     {
         $report = SensorReport::create([
             'tinggi_air' => $payload['tinggi_air'],
-            'ph' => $payload['ph'],
             'debit' => $payload['debit'],
             'status' => $this->determineStatus($payload['tinggi_air']),
         ]);
@@ -94,7 +92,7 @@ class MqttService
 
         if ($report->status !== 'normal') {
             app(CallMeBotService::class)->sendMessage(
-                "🚨 Status: {$report->status}\nTinggi Air: {$report->tinggi_air}cm\nPH: {$report->ph}\nDebit: {$report->debit}"
+                "🚨 Status: {$report->status}\nTinggi Air: {$report->tinggi_air}cm\nDebit: {$report->debit}"
             );
         }
     }
