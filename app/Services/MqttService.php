@@ -59,16 +59,21 @@ class MqttService
                         'status'     => $status,
                     ]);
 
-                    Log::info("💾 Data saved: ID={$report->id}");
+                    Log::info("💾 Data saved: ID={$report->id}, Tinggi Air={$report->tinggi_air}cm, Debit={$report->debit}, Status={$report->status}");
 
-                    if ($status !== 'normal') {
-                        app(CallMeBotService::class)->sendMessage(
-                            "⚠️ *Peringatan Sensor*\nTinggi Air: *{$data['tinggi_air']}cm*\nDebit: {$data['debit']}\nStatus: *{$status}*"
-                        );
+
+                    if ($status == 'critical') {
+                        $pesanNotifikasi = "‼️‼️ *BAHAYA BANJIR* ‼️‼️\n"; 
+                        $pesanNotifikasi .= "Tinggi Air: *{$report->tinggi_air} cm*\n";
+                        $pesanNotifikasi .= "Debit Air: {$report->debit}\n";
+                        $pesanNotifikasi .= "Status: *{$status}*";
+
+                        app(CallMeBotService::class)->sendMessage($pesanNotifikasi);
+                        Log::info("📞 Notifikasi CallMeBot terkirim untuk status: {$status}");
                     }
                 }
 
-            }, 0); // QoS 0
+            }, 0); 
 
             $mqtt->loop(true);
         } catch (\Exception $e) {
@@ -79,28 +84,16 @@ class MqttService
         }
     }
 
-
-    protected function handleMessage(array $payload)
-    {
-        $report = SensorReport::create([
-            'tinggi_air' => $payload['tinggi_air'],
-            'debit' => $payload['debit'],
-            'status' => $this->determineStatus($payload['tinggi_air']),
-        ]);
-
-        Log::info("✅ Sensor report created: ID {$report->id}");
-
-        if ($report->status !== 'normal') {
-            app(CallMeBotService::class)->sendMessage(
-                "🚨 Status: {$report->status}\nTinggi Air: {$report->tinggi_air}cm\nDebit: {$report->debit}"
-            );
-        }
-    }
-
     protected function determineStatus($tinggi_air): string
     {
-        if ($tinggi_air > 100) return 'critical';
-        if ($tinggi_air > 70) return 'warning';
-        return 'normal';
+        $tinggi_air_float = (float) $tinggi_air;
+
+        if ($tinggi_air_float > 80) {
+            return 'critical';
+        } elseif ($tinggi_air_float > 20) {
+            return 'warning';
+        } else {
+            return 'normal';
+        }
     }
 }
