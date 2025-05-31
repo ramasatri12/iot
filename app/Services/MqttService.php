@@ -45,7 +45,7 @@ class MqttService
 
             Log::info("✅ MQTT connected. Listening to topic...");
 
-            $mqtt->subscribe('dumi/sensor/data', function (string $topic, string $message) {
+            $mqtt->subscribe('sensor/data', function (string $topic, string $message) {
                 Log::info("📩 Received message from [$topic]: $message");
 
                 $data = json_decode($message, true);
