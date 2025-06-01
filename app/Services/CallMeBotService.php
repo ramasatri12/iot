@@ -12,8 +12,8 @@ class CallMeBotService
 
     public function __construct()
     {
-        $this->phone = 6281586715179;
-        $this->apikey = 9479963;        
+        $this->phone = '6281586715179';
+        $this->apikey = '9479963';        
     }
 
     public function sendMessage($message)

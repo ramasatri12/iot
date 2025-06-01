@@ -34,6 +34,15 @@ class SensorReportController extends Controller
                 $tinggiAirStatus = 'Status: Aman';
             }
 
+            
+            if ($currentDebitAir > 45 && $currentDebitAir < 55) {
+                $debitAirStatus = 'Aliran Stabil';
+            } elseif ($currentDebitAir <= 45) {
+                $debitAirStatus = 'Aliran Lambat';
+            } else {
+                $debitAirStatus = 'Aliran Deras';
+            }
+
         }
 
         $chartData = $this->prepareWeeklyChartData();
