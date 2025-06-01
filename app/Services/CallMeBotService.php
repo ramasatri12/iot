@@ -12,8 +12,8 @@ class CallMeBotService
 
     public function __construct()
     {
-        $this->phone = env('CALLMEBOT_PHONE');
-        $this->apikey = env('CALLMEBOT_APIKEY');        
+        $this->phone = 6281586715179;
+        $this->apikey = 9479963;        
     }
 
     public function sendMessage($message)

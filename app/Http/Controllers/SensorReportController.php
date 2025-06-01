@@ -26,21 +26,14 @@ class SensorReportController extends Controller
             $currentTinggiAir = $latestReport->tinggi_air;
             $currentDebitAir = $latestReport->debit;
 
-            if ($currentTinggiAir > 110 && $currentTinggiAir < 130) {
-                $tinggiAirStatus = 'Level Optimal';
-            } elseif ($currentTinggiAir <= 110) {
-                $tinggiAirStatus = 'Level Rendah';
+            if ($currentTinggiAir > 80) {
+                $tinggiAirStatus = 'Status: Bahaya';
+            } elseif ($currentTinggiAir > 20) {
+                $tinggiAirStatus = 'Status: Waspada';
             } else {
-                $tinggiAirStatus = 'Level Tinggi';
+                $tinggiAirStatus = 'Status: Aman';
             }
 
-            if ($currentDebitAir > 45 && $currentDebitAir < 55) {
-                $debitAirStatus = 'Aliran Stabil';
-            } elseif ($currentDebitAir <= 45) {
-                $debitAirStatus = 'Aliran Lambat';
-            } else {
-                $debitAirStatus = 'Aliran Deras';
-            }
         }
 
         $chartData = $this->prepareWeeklyChartData();

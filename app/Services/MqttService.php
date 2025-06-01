@@ -50,24 +50,60 @@ class MqttService
 
                 $data = json_decode($message, true);
 
+                
                 if (isset($data['tinggi_air'],$data['debit'])) {
-                    $status = $this->determineStatus((float) $data['tinggi_air']);
+                    $newTinggiAir = (float) $data['tinggi_air'];
+                    $newDebit     = (float) $data['debit'];
+                    $newStatus    = $this->determineStatus($newTinggiAir);
 
-                    $report = SensorReport::create([
-                        'tinggi_air' => (float) $data['tinggi_air'],
-                        'debit'      => (float) $data['debit'],
-                        'status'     => $status,
-                    ]);
+                    $lastReport = SensorReport::orderBy('created_at', 'desc')->first();
 
-                    Log::info("💾 Data saved: ID={$report->id}, Tinggi Air={$report->tinggi_air}cm, Debit={$report->debit}, Status={$report->status}");
+                    if ($lastReport) {
+                        $tinggiAirChanged = abs($newTinggiAir - (float) $lastReport->tinggi_air) > self::FLOAT_COMPARISON_TOLERANCE;
+                        $debitChanged     = abs($newDebit - (float) $lastReport->debit) > self.FLOAT_COMPARISON_TOLERANCE;
+                        $statusChanged    = $newStatus !== $lastReport->status;
 
-
-                    if ($status == 'critical') {
-                        $pesanNotifikasi = 'Status normal, cek fitur aja';
-
-                        app(CallMeBotService::class)->sendMessage($pesanNotifikasi);
-                        Log::info("📞 Notifikasi CallMeBot terkirim untuk status: {$status}");
+                        if (!$tinggiAirChanged && !$debitChanged && !$statusChanged) {
+                            $createRecord = false;
+                            Log::info("📝 Data tidak berubah signifikan dari laporan terakhir. Skipping creation. Current: TA={$newTinggiAir}, D={$newDebit}, S={$newStatus}");
+                        }
                     }
+
+                    if ($createRecord) {
+                        $report = SensorReport::create([
+                            'tinggi_air' => $newTinggiAir,
+                            'debit'      => $newDebit,
+                            'status'     => $newStatus,
+                        ]);
+                        Log::info("💾 Data saved: ID={$report->id}, Tinggi Air={$report->tinggi_air}cm, Debit={$report->debit}, Status={$newStatus}");
+                    }
+
+                    $sendNotification = false;
+                    if ($newStatus === 'critical') {
+                        if (!$lastReport) { 
+                            $sendNotification = true;
+                            Log::info("🔥 Laporan pertama adalah Bahaya. Tinggi Air: {$newTinggiAir}cm.");
+                        } elseif ($lastReport->status !== 'critical') { 
+                            $sendNotification = true;
+                            Log::info("🔥 Status berubah menjadi Bahaya. Tinggi Air: {$newTinggiAir}cm. Status sebelumnya: {$lastReport->status}");
+                        } else {
+                            Log::info("⚠️ Status masih Bahaya (tidak ada perubahan dari laporan terakhir). Notifikasi tidak dikirim ulang. Tinggi Air: {$newTinggiAir}cm.");
+                        }
+                    }
+                    
+                    if ($sendNotification) {
+                        $pesanNotifikasi = "🔴 PERINGATAN Bahaya! Tinggi Air: {$newTinggiAir}cm, Debit: {$newDebit} L/detik. Status: {$newStatus}. Segera periksa kondisi di lokasi!";
+                        
+                        try {
+                            app(CallMeBotService::class)->sendMessage($pesanNotifikasi);
+                            Log::info("📞 Notifikasi CallMeBot terkirim untuk status CRITICAL.");
+                        } catch (\Exception $e) {
+                            Log::error("❌ Gagal mengirim notifikasi CallMeBot: " . $e->getMessage());
+                        }
+                    }
+
+                } else {
+                    Log::warning("⚠️ Data 'tinggi_air' atau 'debit' tidak ditemukan dalam pesan MQTT: $message");
                 }
 
             }, 0); 
