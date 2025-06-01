@@ -4,13 +4,15 @@ namespace App\Services;
 
 use App\Models\SensorReport;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Services\CallMeBotService;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 
 class MqttService
 {
-    protected const FLOAT_COMPARISON_TOLERANCE = 0.1; // toleransi perubahan 10cm atau 0.1 L/detik
+    protected const FLOAT_COMPARISON_TOLERANCE = 0.1; 
+    protected const NOTIFICATION_COOLDOWN_MINUTES = 15;
 
     public function subscribe()
     {
@@ -51,17 +53,17 @@ class MqttService
                 }
 
                 $tinggiAir = (float) $data['tinggi_air'];
-                $debit = (float) $data['debit'];
-                $status = $this->determineStatus($tinggiAir);
+                $debit     = (float) $data['debit'];
+                $status    = $this->determineStatus($tinggiAir);
 
                 $last = SensorReport::latest()->first();
 
                 $significantChange = true;
 
                 if ($last) {
-                    $taChanged = abs($last->tinggi_air - $tinggiAir) > self::FLOAT_COMPARISON_TOLERANCE;
-                    $dChanged = abs($last->debit - $debit) > self::FLOAT_COMPARISON_TOLERANCE;
-                    $statusChanged = $last->status !== $status;
+                    $taChanged      = abs($last->tinggi_air - $tinggiAir) > self::FLOAT_COMPARISON_TOLERANCE;
+                    $dChanged       = abs($last->debit - $debit) > self::FLOAT_COMPARISON_TOLERANCE;
+                    $statusChanged  = $last->status !== $status;
 
                     $significantChange = $taChanged || $dChanged || $statusChanged;
 
@@ -71,23 +73,32 @@ class MqttService
                     }
                 }
 
-                // Simpan jika berbeda
                 $report = SensorReport::create([
                     'tinggi_air' => $tinggiAir,
-                    'debit' => $debit,
-                    'status' => $status,
+                    'debit'      => $debit,
+                    'status'     => $status,
                 ]);
+
                 Log::info("💾 Data saved: ID={$report->id}, TA={$tinggiAir}, D={$debit}, Status={$status}");
 
-                // Kirim notifikasi jika critical baru
-                if ($status === 'critical' && (!$last || $last->status !== 'critical')) {
-                    try {
-                        app(CallMeBotService::class)->sendMessage(
-                            "⚠️ PERINGATAN: Status Bahaya. TA={$tinggiAir}cm, Debit={$debit} L/detik."
-                        );
-                        Log::info("📞 Notifikasi CallMeBot terkirim untuk status: {$status}");
-                    } catch (\Exception $e) {
-                        Log::error("❌ Gagal mengirim notifikasi: " . $e->getMessage());
+                if ($status === 'critical') {
+                    $cacheKey = 'last_critical_notification_sent_at';
+                    $lastNotifTime = Cache::get($cacheKey);
+                    $now = now();
+
+                    if (!$lastNotifTime || $now->diffInMinutes($lastNotifTime) >= self::NOTIFICATION_COOLDOWN_MINUTES) {
+                        try {
+                            app(CallMeBotService::class)->sendMessage(
+                                "⚠️ PERINGATAN: Status Bahaya. TA={$tinggiAir}cm, Debit={$debit} L/detik."
+                            );
+                            Log::info("📞 Notifikasi CallMeBot terkirim untuk status: {$status}");
+
+                            Cache::put($cacheKey, $now, now()->addMinutes(self::NOTIFICATION_COOLDOWN_MINUTES));
+                        } catch (\Exception $e) {
+                            Log::error("❌ Gagal mengirim notifikasi: " . $e->getMessage());
+                        }
+                    } else {
+                        Log::info("⏳ Notifikasi tidak dikirim (dalam masa jeda). Terakhir kirim: $lastNotifTime");
                     }
                 }
 
