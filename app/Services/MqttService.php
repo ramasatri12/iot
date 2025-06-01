@@ -63,10 +63,7 @@ class MqttService
 
 
                     if ($status == 'critical') {
-                        $pesanNotifikasi = "‼️‼️ *BAHAYA BANJIR* ‼️‼️\n"; 
-                        $pesanNotifikasi .= "Tinggi Air: *{$report->tinggi_air} cm*\n";
-                        $pesanNotifikasi .= "Debit Air: {$report->debit}\n";
-                        $pesanNotifikasi .= "Status: *{$status}*";
+                        $pesanNotifikasi = 'Status normal, cek fitur aja';
 
                         app(CallMeBotService::class)->sendMessage($pesanNotifikasi);
                         Log::info("📞 Notifikasi CallMeBot terkirim untuk status: {$status}");
